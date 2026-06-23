@@ -1,0 +1,109 @@
+{
+  "irVersion": "1.0",
+  "metadata": {
+    "id": "sample-customer-app",
+    "name": "Sample Customer App",
+    "version": "1.0",
+    "created": "2026-06-22T21:00:00Z"
+  },
+  "entities": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "tableName": "customers",
+      "fields": [
+        { "id": "customer_id", "name": "customer_id", "type": "integer", "nullable": false },
+        { "id": "name", "name": "name", "type": "string", "nullable": false },
+        { "id": "email", "name": "email", "type": "string", "nullable": false, "constraints": { "regex": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", "unique": true } },
+        { "id": "status", "name": "status", "type": "enum", "nullable": false, "constraints": { "enumValues": ["prospect","active","inactive"] }, "default": "prospect" },
+        { "id": "created_at", "name": "created_at", "type": "datetime", "nullable": false }
+      ]
+    }
+  ],
+  "adapters": [
+    {
+      "id": "email_validator",
+      "name": "Email Uniqueness Validator",
+      "type": "http",
+      "config": { "baseUrl": "https://api.example.com" },
+      "operations": [ { "name": "checkUnique", "inputSchema": { "type": "object" }, "outputSchema": { "type": "object" } } ]
+    },
+    {
+      "id": "email_sender",
+      "name": "Email Sender",
+      "type": "http",
+      "config": { "baseUrl": "https://email.example.com" },
+      "operations": [ { "name": "send", "inputSchema": { "type": "object" }, "outputSchema": { "type": "object" } } ]
+    }
+  ],
+  "forms": [
+    {
+      "id": "customer_form",
+      "name": "CustomerForm",
+      "entityBinding": "customer",
+      "controls": [
+        { "id": "c_customer_id", "type": "TextField", "label": "ID", "fieldRef": "customer_id", "properties": { "readonly": true } },
+        { "id": "c_name", "type": "TextField", "label": "Name", "fieldRef": "name" },
+        { "id": "c_email", "type": "TextField", "label": "Email", "fieldRef": "email" },
+        { "id": "c_status", "type": "ComboBox", "label": "Status", "fieldRef": "status" }
+      ],
+      "rules": [
+        {
+          "id": "r_email_format",
+          "name": "ValidateEmailFormat",
+          "trigger": { "type": "onChange", "target": "email" },
+          "actions": [
+            {
+              "type": "validate",
+              "target": "email",
+              "validator": { "type": "regex", "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$" },
+              "message": "Email is invalid"
+            }
+          ]
+        },
+        {
+          "id": "r_email_unique",
+          "name": "CheckEmailUnique",
+          "trigger": { "type": "onChange", "target": "email" },
+          "actions": [
+            {
+              "type": "callAdapter",
+              "adapterId": "email_validator",
+              "operation": "checkUnique",
+              "inputMapping": { "email": "{{fields.email}}" },
+              "awaitResponse": true,
+              "onSuccess": [ { "type": "assign", "target": "_meta.emailIsUnique", "expr": "response.unique" } ],
+              "onFailure": [ { "type": "showMessage", "severity": "error", "text": "Failed to validate email uniqueness" } ]
+            }
+          ]
+        },
+        {
+          "id": "r_on_save",
+          "name": "SaveCustomer",
+          "trigger": { "type": "onSave" },
+          "transactional": true,
+          "actions": [
+            { "type": "dbOperation", "op": "upsert", "entity": "customer", "mapping": { "customer_id": "{{fields.customer_id}}", "name": "{{fields.name}}", "email": "{{fields.email}}", "status": "{{fields.status}}", "created_at": "{{now}}" } },
+            { "type": "startFlow", "flowId": "customer_created_flow", "input": { "customerId": "{{fields.customer_id}}", "email":"{{fields.email}}" } }
+          ]
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "customer_created_flow",
+      "name": "CustomerCreatedFlow",
+      "startNodeId": "n_start",
+      "nodes": [
+        { "id": "n_start", "type": "start", "name": "Start" },
+        { "id": "n_send_welcome", "type": "task", "name": "SendWelcomeEmail", "payload": { "adapterCall": { "adapterId": "email_sender", "operation": "send", "inputMapping": { "to": "{{input.email}}", "subject": "Welcome", "body": "Welcome to our service" } } } },
+        { "id": "n_end", "type": "end", "name": "End" }
+      ],
+      "transitions": [
+        { "id": "t1", "from": "n_start", "to": "n_send_welcome" },
+        { "id": "t2", "from": "n_send_welcome", "to": "n_end" }
+      ]
+    }
+  ]
+}

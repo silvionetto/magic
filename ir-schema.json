@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Magic / UniPaaS IR",
+  "type": "object",
+  "properties": {
+    "irVersion": { "type": "string" },
+    "metadata": { "type": "object" },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id","name","fields"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "tableName": { "type": "string" },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id","name","type"],
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "label": { "type": "string" },
+                "type": { "type": "string" },
+                "nullable": { "type": "boolean" },
+                "default": { },
+                "constraints": { "type": "object" },
+                "mapping": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "forms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id","name","controls"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "entityBinding": { "type": "string" },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id","type"],
+              "properties": {
+                "id": { "type": "string" },
+                "type": { "type": "string" },
+                "label": { "type": "string" },
+                "fieldRef": { "type": "string" },
+                "properties": { "type": "object" }
+              }
+            }
+          },
+          "rules": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/rule" }
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/rule" }
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id","nodes","transitions","startNodeId"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "nodes": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/node" }
+          },
+          "transitions": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/transition" }
+          },
+          "startNodeId": { "type": "string" }
+        }
+      }
+    },
+    "adapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id","type"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "config": { "type": "object" },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "inputSchema": { "type": "object" },
+                "outputSchema": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "rule": {
+      "type": "object",
+      "required": ["id","trigger","actions"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "trigger": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" },
+            "target": { "type": "string" },
+            "params": { "type": "object" }
+          }
+        },
+        "condition": {
+          "oneOf": [ { "type": "string" }, { "type": "object" } ]
+        },
+        "actions": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id","type"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "payload": { "type": "object" },
+        "properties": { "type": "object" }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "required": ["id","from","to"],
+      "properties": {
+        "id": { "type": "string" },
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "condition": { "oneOf": [ { "type": "string" }, { "type": "object" } ] },
+        "isDefault": { "type": "boolean" }
+      }
+    }
+  }
+}
